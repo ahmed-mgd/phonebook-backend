@@ -52,38 +52,33 @@ app.delete("/api/persons/:id", (req, res) => {
     .catch((error) => next(error));
 });
 
-app.post("/api/persons/", (req, res) => {
+app.post("/api/persons/", (req, res, next) => {
   const newId = Math.floor(Math.random() * 200);
   const body = req.body;
-
-  // if (!body.name || !body.number) {
-  //   return res.status(400).json({
-  //     error: "missing name or number",
-  //   });
-  // } else if (Person.some((person) => person.name === body.name)) {
-  //   return res.status(400).json({
-  //     error: "duplicate name",
-  //   });
-  // }
 
   const person = new Person({
     name: body.name,
     number: body.number,
   });
 
-  person.save().then((result) => {
-    console.log(`Added ${person.name} number ${person.number} to phonebook`);
-  });
-  res.json(person);
+  person
+    .save()
+    .then((result) => {
+      console.log(`Added ${person.name} number ${person.number} to phonebook`);
+      res.json(person);
+    })
+    .catch((error) => next(error));
 });
 
-app.put("/api/persons/:id", (req, res) => {
+app.put("/api/persons/:id", (req, res, next) => {
   const id = req.params.id;
-  const person = {
-    name: req.body.name,
-    number: req.body.number,
-  };
-  Person.findByIdAndUpdate(id, person, { new: true })
+  const { name, number } = req.body;
+
+  Person.findByIdAndUpdate(
+    id,
+    { name, number },
+    { new: true, runValidators: true, context: "query" }
+  )
     .then((updatedNote) => {
       res.json(updatedNote);
     })
@@ -100,6 +95,8 @@ const errorHandler = (error, req, res, next) => {
   console.error(error.message);
   if (error.name === "CastError") {
     return res.status(400).send({ error: "malformatted id" });
+  } else if (error.name === "ValidationError") {
+    return res.status(400).send({ error: error.message})
   }
   next(error);
 };
